@@ -19,7 +19,7 @@ An AI-powered development coach built with Next.js, Supabase, and the Vercel AI 
 
 ```bash
 git clone <repo-url>
-cd App-coachproai
+cd app-coachproai
 npm install
 ```
 
