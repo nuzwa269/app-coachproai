@@ -10,31 +10,50 @@ export interface Database {
   public: {
     Tables: {
       profiles: {
-        Row: Profile;
-        Insert: ProfileInsert;
-        Update: ProfileUpdate;
+        Row: Profile & { [key: string]: unknown };
+        Insert: ProfileInsert & { [key: string]: unknown };
+        Update: ProfileUpdate & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
       };
       projects: {
-        Row: Project;
-        Insert: ProjectInsert;
-        Update: ProjectUpdate;
+        Row: Project & { [key: string]: unknown };
+        Insert: ProjectInsert & { [key: string]: unknown };
+        Update: ProjectUpdate & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
       };
       saved_outputs: {
-        Row: SavedOutput;
-        Insert: SavedOutputInsert;
-        Update: SavedOutputUpdate;
+        Row: SavedOutput & { [key: string]: unknown };
+        Insert: SavedOutputInsert & { [key: string]: unknown };
+        Update: SavedOutputUpdate & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
       };
       chat_messages: {
-        Row: ChatMessage;
-        Insert: ChatMessageInsert;
-        Update: ChatMessageUpdate;
+        Row: ChatMessage & { [key: string]: unknown };
+        Insert: ChatMessageInsert & { [key: string]: unknown };
+        Update: ChatMessageUpdate & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
       };
     };
-    Views: Record<never, never>;
-    Functions: Record<never, never>;
-    Enums: Record<never, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
   };
 }
+
+/** Matches the GenericRelationship type required by @supabase/supabase-js */
+export type GenericRelationship = {
+  foreignKeyName: string;
+  columns: string[];
+  isOneToOne?: boolean;
+  referencedRelation: string;
+  referencedColumns: string[];
+};
 
 // ─── Profiles ────────────────────────────────────────────────────────────────
 
@@ -73,16 +92,24 @@ export interface Project {
   updated_at: string;
 }
 
-export type ProjectInsert = Omit<
-  Project,
-  "id" | "created_at" | "updated_at"
-> &
-  Partial<Pick<Project, "id" | "created_at" | "updated_at">>;
+export type ProjectInsert = {
+  user_id: string;
+  name: string;
+  description?: string | null | undefined;
+  tech_stack?: string[] | null | undefined;
+  status?: "active" | "archived" | "completed" | undefined;
+  id?: string | undefined;
+  created_at?: string | undefined;
+  updated_at?: string | undefined;
+};
 
-export type ProjectUpdate = Partial<
-  Omit<Project, "id" | "user_id" | "created_at" | "updated_at">
-> &
-  Partial<Pick<Project, "updated_at">>;
+export type ProjectUpdate = {
+  name?: string | undefined;
+  description?: string | null | undefined;
+  tech_stack?: string[] | null | undefined;
+  status?: "active" | "archived" | "completed" | undefined;
+  updated_at?: string | undefined;
+};
 
 // ─── Saved Outputs ────────────────────────────────────────────────────────────
 

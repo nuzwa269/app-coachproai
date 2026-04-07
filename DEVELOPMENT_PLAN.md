@@ -22,11 +22,11 @@ Update the checkboxes `[ ]` to `[x]` as you complete each task to track progress
 
 ## 📅 Week 2: UI/UX & Workspace
 **Goal:** Build the shell, navigation, and project management flow.
-- [ ] Build Dashboard Shell (Sidebar, Top nav).
-- [ ] Create "Recent Projects" view.
-- [ ] Build Assistants Grid (Programming Tutor, DB Expert, etc.).
-- [ ] Build Project Workspace (Notion-style tabs: Overview, DB, API, Docs).
-- [ ] Implement CRUD for Projects (Create, Read, Update, Delete).
+- [x] Build Dashboard Shell (Sidebar, Top nav).
+- [x] Create "Recent Projects" view.
+- [x] Build Assistants Grid (Programming Tutor, DB Expert, etc.).
+- [x] Build Project Workspace (Notion-style tabs: Overview, DB, API, Docs).
+- [x] Implement CRUD for Projects (Create, Read, Update, Delete).
 
 ## 📅 Week 3: Core AI Engine
 **Goal:** Make the AI chat functional and context-aware.
