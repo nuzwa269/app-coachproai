@@ -72,7 +72,7 @@ export default async function DashboardPage() {
         </div>
         <p className="mt-2 text-orange-100">
           Your AI-powered development coach is ready. Start a project to get
-          personalised guidance.
+          personalized guidance.
         </p>
       </div>
 
