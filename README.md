@@ -8,7 +8,7 @@ An AI-powered development coach built with Next.js, Supabase, and the Vercel AI 
 - **Styling:** Tailwind CSS v4 + Shadcn UI (brand colors from `DESIGN_SYSTEM.md`)
 - **Database & Auth:** Supabase (PostgreSQL + Row Level Security)
 - **AI Engine:** Vercel AI SDK + OpenAI API / Anthropic Claude *(Week 3)*
-- **Payments:** Stripe Checkout *(Week 4)*
+- **Payments:** Credit Pack system (JazzCash, Easypaisa, Bank Transfer, WhatsApp)
 - **Hosting:** Vercel
 
 ---
@@ -45,8 +45,9 @@ You can find these in your Supabase project dashboard under **Settings → API**
 1. Create a new project at [supabase.com](https://supabase.com).
 2. Open the **SQL Editor** in your Supabase dashboard.
 3. Copy the contents of `supabase/migrations/001_initial_schema.sql` and run it.
+4. Then run `supabase/migrations/002_credit_packs.sql` to add the credit pack tables and RPC functions.
 
-This creates all tables (`profiles`, `projects`, `saved_outputs`, `chat_messages`), indexes, RLS policies, and triggers.
+This creates all tables (`profiles`, `projects`, `saved_outputs`, `chat_messages`, `credit_packs`, `credit_purchases`, `credit_ledger`), indexes, RLS policies, and triggers.
 
 ### 4. Configure Google OAuth (optional)
 
@@ -74,7 +75,18 @@ app/
 │   └── layout.tsx
 ├── (dashboard)/     # Protected routes (require auth)
 │   ├── dashboard/
+│   ├── projects/    # Project workspace with AI chat
+│   ├── buy-credits/ # Buy Credits page + purchase history
+│   ├── saved-outputs/ # Global saved outputs across all projects
+│   ├── admin/
+│   │   └── payments/ # Admin credit purchase approval panel
 │   └── layout.tsx
+├── api/
+│   ├── chat/        # AI chat endpoint (credit-enforced)
+│   ├── credit-packs/ # List active credit packs
+│   ├── credit-purchases/ # Submit & list purchase requests
+│   └── admin/
+│       └── credit-purchases/ # Admin approve/reject purchases
 ├── auth/
 │   ├── callback/    # OAuth callback handler
 │   └── confirm/     # Email confirmation handler
@@ -84,7 +96,11 @@ app/
 
 components/
 ├── auth/            # LoginForm, SignupForm, OAuthButton, LogoutButton
-└── ui/              # Button, Input, Label, Card (Shadcn-style)
+├── chat/            # ChatPanel, SaveToWorkspaceButton
+├── credits/         # CreditBalance, OutOfCreditsModal, LowCreditsWarning,
+│                    # CreditPackCard, PurchaseForm
+├── dashboard/       # DashboardShell, Sidebar, TopNav, project dialogs
+└── ui/              # Button, Input, Label, Card, Dialog (Shadcn-style)
 
 lib/
 ├── supabase/
@@ -103,6 +119,24 @@ supabase/
 
 middleware.ts        # Root Next.js middleware (refreshes Supabase session)
 ```
+
+---
+
+## Credit System
+
+CoachProAI uses a **credit pack** monetization model instead of a recurring subscription:
+
+- New users start with **50 free credits**
+- Each AI message costs **1 credit**
+- Users purchase credit packs using Pakistan-friendly payment methods: **JazzCash, Easypaisa, Bank Transfer, or WhatsApp**
+- Purchases are manually reviewed and approved by the admin
+- Credits are added to the user's balance upon approval
+
+| Pack | Credits | Price |
+|---|---|---|
+| Starter Pack | 100 | Rs.500 |
+| Popular Pack | 200 | Rs.900 |
+| Mega Pack | 500 | Rs.2000 |
 
 ---
 

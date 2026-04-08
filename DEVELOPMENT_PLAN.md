@@ -8,7 +8,7 @@ Update the checkboxes `[ ]` to `[x]` as you complete each task to track progress
 - **Styling:** Tailwind CSS + Shadcn UI
 - **Database & Auth:** Supabase (PostgreSQL)
 - **AI Engine:** Vercel AI SDK + OpenAI API / Anthropic Claude
-- **Payments:** Stripe Checkout
+- **Payments:** Credit Pack system (JazzCash, Easypaisa, Bank Transfer, WhatsApp)
 - **Hosting:** Vercel
 
 ## 📅 Week 1: Foundation & Database
@@ -36,9 +36,13 @@ Update the checkboxes `[ ]` to `[x]` as you complete each task to track progress
 - [x] Save AI outputs to specific project tabs in the database.
 
 ## 📅 Week 4: Monetization & Polish
-**Goal:** Restrict free usage, accept money, and launch.
-- [ ] Implement usage limits for free tier (e.g., max 2 projects / limited AI messages).
-- [ ] Integrate Stripe Checkout for Pro plan upgrades.
-- [ ] Update user plan in Supabase via Stripe Webhooks.
-- [ ] Build Global "Saved Outputs" page across all projects.
-- [ ] Final QA, bug fixes, and connect custom domain (`app.coachproai.com`).
+**Goal:** Implement credit pack monetization, enforce usage limits, and launch.
+- [ ] Add `ai_credits_balance` to profiles, create `credit_packs`, `credit_purchases`, `credit_ledger` tables
+- [ ] Create `deduct_credit` and `add_credits` Supabase RPC functions
+- [ ] Enforce credit check in `/api/chat` route (deduct 1 credit per AI message)
+- [ ] Build Buy Credits page with JazzCash/Easypaisa/Bank/WhatsApp payment instructions
+- [ ] Build credit purchase submission flow with payment proof
+- [ ] Build admin approval panel for credit purchases
+- [ ] Add credit balance display to sidebar
+- [ ] Build Global "Saved Outputs" page across all projects
+- [ ] Final QA, bug fixes, and connect custom domain (`app.coachproai.com`)

@@ -45,6 +45,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "projectId is required" }, { status: 400 });
   }
 
+  // Atomically deduct 1 credit before calling OpenAI.
+  // deduct_credit returns -1 if balance is 0, otherwise returns the new balance.
+  const { data: newBalance, error: deductError } = await supabase.rpc(
+    "deduct_credit",
+    { p_user_id: user.id }
+  );
+
+  if (deductError) {
+    return NextResponse.json({ error: "Failed to check credits." }, { status: 500 });
+  }
+
+  if (newBalance === -1) {
+    return NextResponse.json(
+      { error: "No credits remaining. Please purchase more credits.", code: "NO_CREDITS" },
+      { status: 403 }
+    );
+  }
+
   // Fetch project to build context
   const { data: projectData, error: projectError } = await supabase
     .from("projects")

@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   // Fetch the user's profile to get their name
   const { data: profileData } = await supabase
     .from("profiles")
-    .select("full_name, plan, ai_messages_used, ai_messages_limit")
+    .select("full_name, ai_credits_balance")
     .eq("id", user!.id)
     .single();
 
@@ -35,7 +35,7 @@ export default async function DashboardPage() {
 
   const profile = profileData as Pick<
     Profile,
-    "full_name" | "plan" | "ai_messages_used" | "ai_messages_limit"
+    "full_name" | "ai_credits_balance"
   > | null;
 
   const displayName =
@@ -77,26 +77,15 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            Current Plan
-          </p>
-          <p className="mt-1 text-2xl font-bold text-[#111827] capitalize">
-            {profile?.plan ?? "free"}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-            AI Messages Used
+            AI Credits
           </p>
           <p className="mt-1 text-2xl font-bold text-[#111827]">
-            {profile?.ai_messages_used ?? 0}{" "}
-            <span className="text-sm font-normal text-gray-400">
-              / {profile?.ai_messages_limit ?? 50}
-            </span>
+            {profile?.ai_credits_balance ?? 50}
           </p>
+          <p className="mt-0.5 text-xs text-gray-400">credits remaining</p>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
