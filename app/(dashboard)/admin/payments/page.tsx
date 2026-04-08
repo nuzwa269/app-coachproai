@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ export default function AdminPaymentsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchPurchases(status: StatusTab) {
+  const fetchPurchases = useCallback(async (status: StatusTab) => {
     setLoading(true);
     setError(null);
     const res = await fetch(`/api/admin/credit-purchases?status=${status}`);
@@ -60,12 +60,11 @@ export default function AdminPaymentsPage() {
       setError(data.error ?? "Failed to load purchases");
     }
     setLoading(false);
-  }
+  }, [router]);
 
   useEffect(() => {
     fetchPurchases(tab);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [tab, fetchPurchases]);
 
   async function handleAction(purchaseId: string, action: "approve" | "reject") {
     setActionLoading(purchaseId + action);

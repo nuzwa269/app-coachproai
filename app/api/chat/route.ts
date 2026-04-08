@@ -45,14 +45,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "projectId is required" }, { status: 400 });
   }
 
-  // Check credit balance before calling OpenAI
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("ai_credits_balance")
-    .eq("id", user.id)
-    .single();
+  // Atomically deduct 1 credit before calling OpenAI.
+  // deduct_credit returns -1 if balance is 0, otherwise returns the new balance.
+  const { data: newBalance, error: deductError } = await supabase.rpc(
+    "deduct_credit",
+    { p_user_id: user.id }
+  );
 
-  if (!profile || profile.ai_credits_balance <= 0) {
+  if (deductError) {
+    return NextResponse.json({ error: "Failed to check credits." }, { status: 500 });
+  }
+
+  if (newBalance === -1) {
     return NextResponse.json(
       { error: "No credits remaining. Please purchase more credits.", code: "NO_CREDITS" },
       { status: 403 }
@@ -132,9 +136,6 @@ Always tailor your advice to this specific project context. Give structured, act
       if (messagesToSave.length > 0) {
         await supabase.from("chat_messages").insert(messagesToSave);
       }
-
-      // Deduct 1 credit after successful AI response
-      await supabase.rpc("deduct_credit", { p_user_id: user.id });
     },
   });
 

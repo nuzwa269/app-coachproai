@@ -55,7 +55,8 @@ export function PurchaseForm({ packs, selectedPackId, onSuccess }: PurchaseFormP
       }
 
       onSuccess();
-    } catch {
+    } catch (err) {
+      console.error("Purchase submission failed:", err);
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);

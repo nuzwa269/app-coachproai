@@ -45,23 +45,24 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
   const [credits, setCredits] = useState<number | null>(null);
   const [showNoCreditsModal, setShowNoCreditsModal] = useState(false);
 
+  const supabaseClient = useMemo(() => createClient(), []);
+
   // Fetch credit balance on mount
   useEffect(() => {
-    const supabase = createClient();
     async function fetchCredits() {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await supabaseClient.auth.getUser();
       if (!user) return;
-      const { data } = await supabase
+      const { data, error: fetchError } = await supabaseClient
         .from("profiles")
         .select("ai_credits_balance")
         .eq("id", user.id)
         .single();
-      if (data) setCredits(data.ai_credits_balance as number);
+      if (!fetchError && data) setCredits(data.ai_credits_balance as number);
     }
     fetchCredits();
-  }, []);
+  }, [supabaseClient]);
 
   // Create the transport once; projectId/assistantType are sent per-message
   const transport = useMemo(
@@ -95,25 +96,22 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
     }
   }, [error]);
 
-  // Decrement credits optimistically after a message is sent
+  // Refresh credit balance after a response finishes
   useEffect(() => {
-    if (status === "ready" && credits !== null && credits > 0) {
-      // The server deducts; refresh the balance when streaming finishes
-      const supabase = createClient();
-      supabase.auth.getUser().then(({ data: { user } }) => {
+    if (status === "ready") {
+      supabaseClient.auth.getUser().then(({ data: { user } }) => {
         if (!user) return;
-        supabase
+        supabaseClient
           .from("profiles")
           .select("ai_credits_balance")
           .eq("id", user.id)
           .single()
-          .then(({ data }) => {
-            if (data) setCredits(data.ai_credits_balance as number);
+          .then(({ data, error: fetchError }) => {
+            if (!fetchError && data) setCredits(data.ai_credits_balance as number);
           });
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, supabaseClient]);
 
   async function handleSend() {
     const text = inputValue.trim();
