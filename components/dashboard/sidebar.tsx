@@ -5,13 +5,15 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FolderOpen,
-  Bot,
+  Bookmark,
+  Coins,
   Settings,
   LogOut,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { CreditBalance } from "@/components/credits/CreditBalance";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -32,11 +34,16 @@ const navLinks = [
     disabled: false,
   },
   {
-    href: "#",
-    label: "AI Chat",
-    icon: Bot,
-    disabled: true,
-    badge: "Week 3",
+    href: "/saved-outputs",
+    label: "Saved Outputs",
+    icon: Bookmark,
+    disabled: false,
+  },
+  {
+    href: "/buy-credits",
+    label: "Buy Credits",
+    icon: Coins,
+    disabled: false,
   },
   {
     href: "#",
@@ -127,11 +134,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Logout at bottom */}
-        <div className="px-4 py-4 border-t border-gray-200 shrink-0">
+        {/* Credit balance + Logout at bottom */}
+        <div className="px-4 py-4 border-t border-gray-200 shrink-0 space-y-1">
+          <CreditBalance />
           <LogoutButton />
         </div>
       </aside>
     </>
   );
 }
+

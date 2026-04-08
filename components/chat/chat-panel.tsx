@@ -8,6 +8,9 @@ import { Send, Bot, User, Loader2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SaveToWorkspaceButton } from "@/components/chat/save-to-workspace-button";
+import { OutOfCreditsModal } from "@/components/credits/OutOfCreditsModal";
+import { LowCreditsWarning } from "@/components/credits/LowCreditsWarning";
+import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const ASSISTANT_TYPES = [
@@ -39,6 +42,26 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
   );
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [showNoCreditsModal, setShowNoCreditsModal] = useState(false);
+
+  // Fetch credit balance on mount
+  useEffect(() => {
+    const supabase = createClient();
+    async function fetchCredits() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("ai_credits_balance")
+        .eq("id", user.id)
+        .single();
+      if (data) setCredits(data.ai_credits_balance as number);
+    }
+    fetchCredits();
+  }, []);
 
   // Create the transport once; projectId/assistantType are sent per-message
   const transport = useMemo(
@@ -46,7 +69,7 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
     []
   );
 
-  const { messages, sendMessage, status, setMessages } = useChat({ transport });
+  const { messages, sendMessage, status, setMessages, error } = useChat({ transport });
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -60,9 +83,48 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Detect NO_CREDITS error from the server
+  useEffect(() => {
+    if (error) {
+      const msg = error.message ?? "";
+      if (msg.includes("NO_CREDITS") || msg.includes("No credits")) {
+        setShowNoCreditsModal(true);
+        // Reset credits display to 0
+        setCredits(0);
+      }
+    }
+  }, [error]);
+
+  // Decrement credits optimistically after a message is sent
+  useEffect(() => {
+    if (status === "ready" && credits !== null && credits > 0) {
+      // The server deducts; refresh the balance when streaming finishes
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return;
+        supabase
+          .from("profiles")
+          .select("ai_credits_balance")
+          .eq("id", user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) setCredits(data.ai_credits_balance as number);
+          });
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
   async function handleSend() {
     const text = inputValue.trim();
     if (!text || isLoading) return;
+
+    // Client-side guard: show modal if balance is 0
+    if (credits !== null && credits <= 0) {
+      setShowNoCreditsModal(true);
+      return;
+    }
+
     setInputValue("");
     await sendMessage(
       { text },
@@ -79,6 +141,12 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Out of credits modal */}
+      <OutOfCreditsModal
+        open={showNoCreditsModal}
+        onClose={() => setShowNoCreditsModal(false)}
+      />
+
       {/* Assistant selector */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
         <Bot className="h-4 w-4 text-brand-orange shrink-0" />
@@ -97,6 +165,13 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
           <ChevronDown className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
         </div>
       </div>
+
+      {/* Low credits warning */}
+      {credits !== null && credits < 10 && (
+        <div className="px-4 pt-2">
+          <LowCreditsWarning credits={credits} />
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
@@ -217,5 +292,3 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
     </div>
   );
 }
-
-
