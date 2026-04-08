@@ -30,10 +30,10 @@ Update the checkboxes `[ ]` to `[x]` as you complete each task to track progress
 
 ## 📅 Week 3: Core AI Engine
 **Goal:** Make the AI chat functional and context-aware.
-- [ ] Build Chat Interface using Vercel AI SDK (`useChat`).
-- [ ] Implement Context Injection (pass Project details into AI System Prompt).
-- [ ] Build the "Save to Workspace" button on AI responses.
-- [ ] Save AI outputs to specific project tabs in the database.
+- [x] Build Chat Interface using Vercel AI SDK (`useChat`).
+- [x] Implement Context Injection (pass Project details into AI System Prompt).
+- [x] Build the "Save to Workspace" button on AI responses.
+- [x] Save AI outputs to specific project tabs in the database.
 
 ## 📅 Week 4: Monetization & Polish
 **Goal:** Restrict free usage, accept money, and launch.

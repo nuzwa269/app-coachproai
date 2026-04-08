@@ -7,9 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { WorkspaceTabs } from "@/components/workspace/workspace-tabs";
 import { EditProjectDialog } from "@/components/dashboard/edit-project-dialog";
 import { DeleteProjectDialog } from "@/components/dashboard/delete-project-dialog";
+import { ChatPanel } from "@/components/chat/chat-panel";
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ assistant?: string }>;
 }
 
 export async function generateMetadata({ params }: ProjectPageProps) {
@@ -24,7 +26,7 @@ export async function generateMetadata({ params }: ProjectPageProps) {
   return { title: name ? `${name} — CoachPro AI` : "Project — CoachPro AI" };
 }
 
-export default async function ProjectPage({ params }: ProjectPageProps) {
+export default async function ProjectPage({ params, searchParams }: ProjectPageProps) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,6 +37,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   }
 
   const { id } = await params;
+  const { assistant } = await searchParams;
 
   // Fetch project (must belong to the user)
   const { data: projectData, error } = await supabase
@@ -67,7 +70,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Back navigation */}
       <Link
         href="/dashboard"
@@ -117,12 +120,31 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </div>
       </div>
 
-      {/* Workspace Tabs */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 pt-6">
-          <WorkspaceTabs savedOutputs={savedOutputs} />
+      {/* Workspace + Chat */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
+        {/* Workspace Tabs */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 pt-6 pb-6">
+            <WorkspaceTabs savedOutputs={savedOutputs} />
+          </div>
+        </div>
+
+        {/* AI Chat Panel */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-[560px]">
+          <div className="px-4 pt-4 pb-0 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-[#111827] font-heading pb-3">
+              AI Assistant
+            </h2>
+          </div>
+          <div className="flex-1 min-h-0">
+            <ChatPanel
+              projectId={project.id}
+              initialAssistantType={assistant}
+            />
+          </div>
         </div>
       </div>
     </div>
   );
 }
+

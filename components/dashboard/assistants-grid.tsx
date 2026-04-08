@@ -1,3 +1,6 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import {
   Code,
   Database,
@@ -42,16 +45,28 @@ const assistants = [
   },
 ];
 
-export function AssistantsGrid() {
+interface AssistantsGridProps {
+  projectId?: string;
+  onSelectAssistant?: (assistantType: string) => void;
+}
+
+export function AssistantsGrid({ projectId, onSelectAssistant }: AssistantsGridProps) {
+  const router = useRouter();
+
+  function handleClick(title: string) {
+    if (onSelectAssistant) {
+      onSelectAssistant(title);
+    } else if (projectId) {
+      router.push(`/projects/${projectId}?assistant=${encodeURIComponent(title)}`);
+    }
+  }
+
   return (
     <section>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold text-[#111827] font-heading">
           AI Assistants
         </h2>
-        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-          Coming in Week 3
-        </span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {assistants.map((assistant) => {
@@ -59,7 +74,8 @@ export function AssistantsGrid() {
           return (
             <Card
               key={assistant.title}
-              className="border border-gray-200 hover:border-brand-orange hover:shadow-md transition-all duration-200 cursor-default opacity-80"
+              className="border border-gray-200 hover:border-brand-orange hover:shadow-md transition-all duration-200 cursor-pointer"
+              onClick={() => handleClick(assistant.title)}
             >
               <CardContent className="p-5">
                 <div className="flex items-start gap-4">
@@ -83,3 +99,4 @@ export function AssistantsGrid() {
     </section>
   );
 }
+

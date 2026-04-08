@@ -28,9 +28,7 @@ export function TabContent({ category, outputs }: TabContentProps) {
           {emptyStateMessages[category] ??
             "Use the AI assistants to generate content and save it to this tab."}
         </p>
-        <p className="text-xs text-gray-400 mt-3">
-          AI Chat will be available in Week 3
-        </p>
+
       </div>
     );
   }
