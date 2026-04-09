@@ -52,7 +52,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protect admin routes — redirect users without admin/super_admin role
-  const isAdminRoute = pathname.startsWith("/admin");
+  const isAdminRoute =
+    pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
   if (isAdminRoute) {
     if (!user) {
       const url = request.nextUrl.clone();

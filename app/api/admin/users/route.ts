@@ -1,0 +1,171 @@
+import { NextResponse } from "next/server";
+import type { UserRole } from "@/lib/auth/roles";
+import { isSuperAdmin } from "@/lib/auth/roles";
+import { requireAdmin } from "@/lib/auth/server-roles";
+import { logAdminEvent } from "@/lib/admin/audit";
+
+const ALLOWED_ROLES: UserRole[] = ["user", "subscriber", "admin", "super_admin"];
+const PRIVILEGED_ROLES: UserRole[] = ["admin", "super_admin"];
+
+function parsePage(value: string | null, fallback: number) {
+  const numeric = Number(value ?? fallback);
+  if (!Number.isFinite(numeric) || numeric < 1) return fallback;
+  return Math.floor(numeric);
+}
+
+export async function GET(request: Request) {
+  let supabase;
+
+  try {
+    ({ supabase } = await requireAdmin());
+  } catch {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get("query")?.trim() ?? "";
+  const roleFilter = searchParams.get("role")?.trim() ?? "all";
+  const page = parsePage(searchParams.get("page"), 1);
+  const pageSize = Math.min(parsePage(searchParams.get("pageSize"), 20), 50);
+
+  const rangeStart = (page - 1) * pageSize;
+  const rangeEnd = rangeStart + pageSize - 1;
+
+  let dataQuery = supabase
+    .from("profiles")
+    .select(
+      "id, email, full_name, role, ai_credits_balance, created_at, updated_at",
+      { count: "exact" }
+    )
+    .order("created_at", { ascending: false })
+    .range(rangeStart, rangeEnd);
+
+  if (roleFilter !== "all") {
+    dataQuery = dataQuery.eq("role", roleFilter);
+  }
+
+  if (query) {
+    dataQuery = dataQuery.or(`email.ilike.%${query}%,full_name.ilike.%${query}%`);
+  }
+
+  const { data, error, count } = await dataQuery;
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    users: data ?? [],
+    page,
+    pageSize,
+    total: count ?? 0,
+    totalPages: Math.max(1, Math.ceil((count ?? 0) / pageSize)),
+  });
+}
+
+type UpdateUserPayload = {
+  userId: string;
+  role?: UserRole;
+  full_name?: string | null;
+  ai_credits_balance?: number;
+};
+
+export async function PATCH(request: Request) {
+  let supabase;
+  let actorRole: UserRole;
+  let actorId: string;
+
+  try {
+    ({ supabase, role: actorRole, user: { id: actorId } } = await requireAdmin());
+  } catch {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const body = (await request.json()) as UpdateUserPayload;
+  const { userId, role: nextRole, full_name, ai_credits_balance } = body;
+
+  if (!userId) {
+    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  }
+
+  const { data: targetProfile, error: targetError } = await supabase
+    .from("profiles")
+    .select("id, role")
+    .eq("id", userId)
+    .single();
+
+  if (targetError || !targetProfile) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const targetRole = targetProfile.role as UserRole;
+
+  if (!isSuperAdmin(actorRole) && PRIVILEGED_ROLES.includes(targetRole)) {
+    return NextResponse.json(
+      { error: "Only super admins can modify admin or super admin accounts" },
+      { status: 403 }
+    );
+  }
+
+  if (nextRole && !ALLOWED_ROLES.includes(nextRole)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  }
+
+  if (!isSuperAdmin(actorRole) && nextRole && PRIVILEGED_ROLES.includes(nextRole)) {
+    return NextResponse.json(
+      { error: "Only super admins can assign admin or super admin roles" },
+      { status: 403 }
+    );
+  }
+
+  const updates: {
+    role?: UserRole;
+    full_name?: string | null;
+    ai_credits_balance?: number;
+  } = {};
+
+  if (typeof nextRole === "string") {
+    updates.role = nextRole;
+  }
+
+  if (full_name !== undefined) {
+    updates.full_name = full_name?.trim() ? full_name.trim() : null;
+  }
+
+  if (ai_credits_balance !== undefined) {
+    if (!Number.isFinite(ai_credits_balance) || ai_credits_balance < 0) {
+      return NextResponse.json(
+        { error: "ai_credits_balance must be a positive number" },
+        { status: 400 }
+      );
+    }
+    updates.ai_credits_balance = Math.floor(ai_credits_balance);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: "No valid updates provided" }, { status: 400 });
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", userId)
+    .select("id, email, full_name, role, ai_credits_balance, created_at, updated_at")
+    .single();
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
+
+  await logAdminEvent(supabase, {
+    actorId,
+    category: "users",
+    action: "update_profile",
+    entityType: "profile",
+    entityId: userId,
+    message: `Admin updated profile ${updated.email}`,
+    metadata: updates,
+  });
+
+  return NextResponse.json(updated);
+}

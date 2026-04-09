@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopNav } from "@/components/dashboard/top-nav";
 
@@ -11,6 +12,12 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children, userEmail }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Admin routes are rendered with their own dedicated shell.
+  if (pathname.startsWith("/admin")) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen flex bg-[#FAFAFA]">

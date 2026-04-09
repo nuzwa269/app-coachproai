@@ -57,6 +57,36 @@ export interface Database {
         Update: Partial<Omit<CreditLedgerEntry, "id" | "user_id" | "created_at">> & { [key: string]: unknown };
         Relationships: GenericRelationship[];
       };
+      assistants: {
+        Row: Assistant & { [key: string]: unknown };
+        Insert: Omit<Assistant, "id" | "created_at" | "updated_at"> & Partial<Pick<Assistant, "id" | "created_at" | "updated_at">> & { [key: string]: unknown };
+        Update: Partial<Omit<Assistant, "id" | "created_at" | "updated_at">> & Partial<Pick<Assistant, "updated_at">> & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
+      };
+      admin_event_logs: {
+        Row: AdminEventLog & { [key: string]: unknown };
+        Insert: Omit<AdminEventLog, "id" | "created_at"> & Partial<Pick<AdminEventLog, "id" | "created_at">> & { [key: string]: unknown };
+        Update: Partial<Omit<AdminEventLog, "id" | "created_at">> & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
+      };
+      admin_templates: {
+        Row: AdminTemplate & { [key: string]: unknown };
+        Insert: Omit<AdminTemplate, "id" | "created_at" | "updated_at" | "version"> & Partial<Pick<AdminTemplate, "id" | "created_at" | "updated_at" | "version">> & { [key: string]: unknown };
+        Update: Partial<Omit<AdminTemplate, "id" | "created_at" | "updated_at">> & Partial<Pick<AdminTemplate, "updated_at">> & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
+      };
+      admin_knowledge_sources: {
+        Row: AdminKnowledgeSource & { [key: string]: unknown };
+        Insert: Omit<AdminKnowledgeSource, "id" | "created_at" | "updated_at" | "chunk_count" | "last_synced_at"> & Partial<Pick<AdminKnowledgeSource, "id" | "created_at" | "updated_at" | "chunk_count" | "last_synced_at">> & { [key: string]: unknown };
+        Update: Partial<Omit<AdminKnowledgeSource, "id" | "created_at" | "updated_at">> & Partial<Pick<AdminKnowledgeSource, "updated_at">> & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
+      };
+      admin_settings: {
+        Row: AdminSetting & { [key: string]: unknown };
+        Insert: Omit<AdminSetting, "id" | "created_at" | "updated_at"> & Partial<Pick<AdminSetting, "id" | "created_at" | "updated_at">> & { [key: string]: unknown };
+        Update: Partial<Omit<AdminSetting, "id" | "created_at" | "updated_at">> & Partial<Pick<AdminSetting, "updated_at">> & { [key: string]: unknown };
+        Relationships: GenericRelationship[];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -231,4 +261,76 @@ export interface CreditLedgerEntry {
   reason: string;
   balance_after: number;
   created_at: string;
+}
+
+// ─── Assistants ───────────────────────────────────────────────────────────────
+
+export type AssistantProvider = "openai" | "anthropic" | "google" | "custom";
+
+export interface Assistant {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  persona: string;
+  provider: AssistantProvider;
+  model: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Admin Control Plane ─────────────────────────────────────────────────────
+
+export type AdminLogSeverity = "info" | "warning" | "error";
+
+export interface AdminEventLog {
+  id: string;
+  actor_id: string | null;
+  category: string;
+  action: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  severity: AdminLogSeverity;
+  message: string;
+  metadata: Json;
+  created_at: string;
+}
+
+export type AdminTemplateStatus = "draft" | "active" | "archived";
+
+export interface AdminTemplate {
+  id: string;
+  name: string;
+  category: string;
+  content: string;
+  status: AdminTemplateStatus;
+  version: number;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type KnowledgeStatus = "queued" | "indexing" | "healthy" | "failed";
+
+export interface AdminKnowledgeSource {
+  id: string;
+  name: string;
+  source_ref: string;
+  sync_instructions: string | null;
+  status: KnowledgeStatus;
+  chunk_count: number;
+  last_synced_at: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminSetting {
+  id: string;
+  key: string;
+  value: Json;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
 }

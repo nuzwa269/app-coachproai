@@ -15,4 +15,13 @@ export type {
   ChatMessage,
   ChatMessageInsert,
   ChatMessageUpdate,
+  Assistant,
+  AssistantProvider,
+  AdminEventLog,
+  AdminTemplate,
+  AdminTemplateStatus,
+  AdminKnowledgeSource,
+  KnowledgeStatus,
+  AdminSetting,
+  AdminLogSeverity,
 } from "@/types/database";
