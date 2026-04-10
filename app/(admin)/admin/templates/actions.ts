@@ -21,6 +21,7 @@ export async function createTemplateAction(formData: FormData) {
       name,
       category,
       content,
+      status: "draft",
       updated_by: user.id,
     })
     .select("id")
