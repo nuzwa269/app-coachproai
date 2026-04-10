@@ -48,11 +48,13 @@ export async function updateKnowledgeStatusAction(formData: FormData) {
   const { supabase, user } = await requireAdmin();
 
   const sourceId = String(formData.get("sourceId") ?? "").trim();
-  const status = String(formData.get("status") ?? "").trim();
+  const rawStatus = String(formData.get("status") ?? "").trim();
 
-  if (!sourceId || !["queued", "indexing", "healthy", "failed"].includes(status)) {
+  if (!sourceId || !["queued", "indexing", "healthy", "failed"].includes(rawStatus)) {
     return;
   }
+
+  const status = rawStatus as "queued" | "indexing" | "healthy" | "failed";
 
   const { data: source, error: fetchError } = await supabase
     .from("admin_knowledge_sources")
