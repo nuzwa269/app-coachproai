@@ -16,6 +16,18 @@ type AuthResult = {
   role: UserRole;
 };
 
+function isTemporaryAdminByEmail(
+  email: string | null | undefined,
+  emailConfirmedAt: string | null | undefined
+): boolean {
+  const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!configuredAdminEmail) return false;
+  if (!email) return false;
+  if (!emailConfirmedAt) return false;
+
+  return email.trim().toLowerCase() === configuredAdminEmail;
+}
+
 /**
  * Fetches the current user's role from the profiles table.
  * Returns 'user' as the safe default if no profile is found.
@@ -92,7 +104,13 @@ export async function requireAuth(): Promise<AuthResult> {
 export async function requireAdmin(): Promise<AuthResult> {
   const result = await requireAuth();
 
-  if (!isAdmin(result.role)) {
+  const isRoleAdmin = isAdmin(result.role);
+  const isFallbackAdmin = isTemporaryAdminByEmail(
+    result.user.email,
+    result.user.email_confirmed_at
+  );
+
+  if (!isRoleAdmin && !isFallbackAdmin) {
     redirect("/dashboard");
   }
 
