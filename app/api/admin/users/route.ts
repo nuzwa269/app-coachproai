@@ -188,15 +188,39 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  await logAdminEvent(supabase, {
-    actorId,
-    category: "users",
-    action: "update_profile",
-    entityType: "profile",
-    entityId: userId,
-    message: `Admin updated profile ${updated.email}`,
-    metadata: updates,
-  });
+  const roleChanged =
+    typeof updates.role === "string" && updates.role !== targetProfile.role;
+  const accountTypeChanged =
+    typeof updates.account_type === "string" &&
+    updates.account_type !== targetProfile.account_type;
+
+  if (roleChanged || accountTypeChanged) {
+    await logAdminEvent(supabase, {
+      actorId,
+      category: "users",
+      action: "change_role",
+      entityType: "profile",
+      entityId: userId,
+      severity: "warning",
+      message: `Admin changed access for ${updated.email}: role ${targetProfile.role}→${updated.role}, account_type ${targetProfile.account_type}→${updated.account_type}`,
+      metadata: {
+        previousRole: targetProfile.role,
+        nextRole: updated.role,
+        previousAccountType: targetProfile.account_type,
+        nextAccountType: updated.account_type,
+      },
+    });
+  } else {
+    await logAdminEvent(supabase, {
+      actorId,
+      category: "users",
+      action: "update_profile",
+      entityType: "profile",
+      entityId: userId,
+      message: `Admin updated profile ${updated.email}`,
+      metadata: updates,
+    });
+  }
 
   return NextResponse.json(updated);
 }
