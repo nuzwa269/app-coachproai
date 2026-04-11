@@ -169,54 +169,27 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const { data: purchases, error: fetchError } = await supabase
-    .from("credit_purchases")
-    .select("id, user_id, credits, status")
-    .in("id", ids);
+  const reviewedIds: string[] = [];
 
-  if (fetchError) {
-    return NextResponse.json({ error: fetchError.message }, { status: 500 });
-  }
-
-  const list = purchases ?? [];
-
-  if (!list.length) {
-    return NextResponse.json({ error: "No purchases found" }, { status: 404 });
-  }
-
-  const alreadyReviewed = list.find((entry) => entry.status !== "pending");
-  if (alreadyReviewed) {
-    return NextResponse.json(
-      { error: "Purchase has already been reviewed" },
-      { status: 400 }
-    );
-  }
-
-  if (action === "approve") {
-    for (const purchase of list) {
-      const { error: rpcError } = await supabase.rpc("add_credits", {
-        p_user_id: purchase.user_id,
-        p_amount: purchase.credits,
-      });
-
-      if (rpcError) {
-        return NextResponse.json({ error: rpcError.message }, { status: 500 });
+  for (const id of ids) {
+    const { data: reviewedRows, error: reviewError } = await supabase.rpc(
+      "review_credit_purchase",
+      {
+        p_purchase_id: id,
+        p_action: action,
+        p_admin_notes: admin_notes?.trim() || null,
       }
+    );
+
+    if (reviewError) {
+      return NextResponse.json({ error: reviewError.message }, { status: 400 });
     }
-  }
 
-  const { data: updated, error: updateError } = await supabase
-    .from("credit_purchases")
-    .update({
-      status: action === "approve" ? "approved" : "rejected",
-      admin_notes: admin_notes ?? null,
-      reviewed_at: new Date().toISOString(),
-    })
-    .in("id", ids)
-    .select();
+    if (!reviewedRows || reviewedRows.length === 0) {
+      return NextResponse.json({ error: "Purchase review failed" }, { status: 500 });
+    }
 
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    reviewedIds.push(reviewedRows[0].purchase_id);
   }
 
   await logAdminEvent(supabase, {
@@ -230,10 +203,10 @@ export async function PATCH(request: Request) {
         ? `Purchase ${ids[0]} ${action === "approve" ? "approved" : "rejected"}`
         : `${ids.length} purchases ${action === "approve" ? "approved" : "rejected"} in bulk`,
     metadata: {
-      purchaseIds: ids,
+      purchaseIds: reviewedIds,
       adminNotes: admin_notes ?? null,
     },
   });
 
-  return NextResponse.json({ updated: updated ?? [] });
+  return NextResponse.json({ updatedIds: reviewedIds });
 }

@@ -126,6 +126,20 @@ export interface Database {
         Args: { user_id: string };
         Returns: boolean;
       };
+      review_credit_purchase: {
+        Args: {
+          p_purchase_id: string;
+          p_action: string;
+          p_admin_notes?: string;
+        };
+        Returns: {
+          purchase_id: string;
+          status: string;
+          user_id: string;
+          credits: number;
+          new_balance: number | null;
+        }[];
+      };
     };
     Enums: {
       user_role: UserRole;
