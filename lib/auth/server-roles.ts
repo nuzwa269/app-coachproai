@@ -1,6 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { isAdmin, isSuperAdmin, type UserRole } from "@/lib/auth/roles";
+import {
+  isAdmin,
+  isSuperAdmin,
+  resolveAccountType,
+  type AccountType,
+  type UserRole,
+} from "@/lib/auth/roles";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
@@ -9,6 +15,18 @@ type AuthResult = {
   user: User;
   role: UserRole;
 };
+
+function isTemporaryAdminByEmail(
+  email: string | null | undefined,
+  emailConfirmedAt: string | null | undefined
+): boolean {
+  const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!configuredAdminEmail) return false;
+  if (!email) return false;
+  if (!emailConfirmedAt) return false;
+
+  return email.trim().toLowerCase() === configuredAdminEmail;
+}
 
 /**
  * Fetches the current user's role from the profiles table.
@@ -29,6 +47,29 @@ export async function getServerUserRole(): Promise<UserRole> {
     .single();
 
   return (data?.role as UserRole | null) ?? "user";
+}
+
+/**
+ * Fetches account_type with a legacy fallback for old subscriber role rows.
+ */
+export async function getServerAccountType(): Promise<AccountType> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return "free";
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("role, account_type")
+    .eq("id", user.id)
+    .single();
+
+  return resolveAccountType(
+    (data?.account_type as AccountType | null) ?? null,
+    (data?.role as UserRole | null) ?? "user"
+  );
 }
 
 /**
@@ -63,7 +104,13 @@ export async function requireAuth(): Promise<AuthResult> {
 export async function requireAdmin(): Promise<AuthResult> {
   const result = await requireAuth();
 
-  if (!isAdmin(result.role)) {
+  const isRoleAdmin = isAdmin(result.role);
+  const isFallbackAdmin = isTemporaryAdminByEmail(
+    result.user.email,
+    result.user.email_confirmed_at
+  );
+
+  if (!isRoleAdmin && !isFallbackAdmin) {
     redirect("/dashboard");
   }
 

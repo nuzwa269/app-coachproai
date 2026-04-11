@@ -4,6 +4,20 @@ import { logAdminEvent } from "@/lib/admin/audit";
 
 type PurchaseStatus = "pending" | "approved" | "rejected";
 type PurchaseMethod = "jazzcash" | "easypaisa" | "bank_transfer" | "whatsapp";
+type PurchaseStatusFilter = PurchaseStatus | "all";
+
+function isPurchaseStatus(value: string): value is PurchaseStatus {
+  return value === "pending" || value === "approved" || value === "rejected";
+}
+
+function isPurchaseMethod(value: string): value is PurchaseMethod {
+  return (
+    value === "jazzcash" ||
+    value === "easypaisa" ||
+    value === "bank_transfer" ||
+    value === "whatsapp"
+  );
+}
 
 function parsePage(value: string | null, fallback: number) {
   const numeric = Number(value ?? fallback);
@@ -42,9 +56,9 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const statusFilter = (searchParams.get("status") ?? "pending") as
-    | PurchaseStatus
-    | "all";
+  const rawStatus = searchParams.get("status")?.trim() ?? "pending";
+  const statusFilter: PurchaseStatusFilter =
+    rawStatus === "all" || isPurchaseStatus(rawStatus) ? rawStatus : "pending";
   const searchQuery = searchParams.get("query")?.trim() ?? "";
   const rawMethod = searchParams.get("method")?.trim() ?? "all";
   const exportMode = searchParams.get("export")?.trim();
@@ -60,21 +74,12 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false });
 
   if (statusFilter !== "all") {
-    purchasesQuery = purchasesQuery.eq(
-      "status",
-      statusFilter as "pending" | "approved" | "rejected"
-    );
+    purchasesQuery = purchasesQuery.eq("status", statusFilter);
   }
 
   // ✅ FIXED (type + reassignment)
-  if (
-    rawMethod !== "all" &&
-    ["jazzcash", "easypaisa", "bank_transfer", "whatsapp"].includes(rawMethod)
-  ) {
-    purchasesQuery = purchasesQuery.eq(
-      "method",
-      rawMethod as PurchaseMethod
-    );
+  if (rawMethod !== "all" && isPurchaseMethod(rawMethod)) {
+    purchasesQuery = purchasesQuery.eq("method", rawMethod);
   }
 
   if (searchQuery) {
@@ -164,54 +169,27 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const { data: purchases, error: fetchError } = await supabase
-    .from("credit_purchases")
-    .select("id, user_id, credits, status")
-    .in("id", ids);
+  const reviewedIds: string[] = [];
 
-  if (fetchError) {
-    return NextResponse.json({ error: fetchError.message }, { status: 500 });
-  }
-
-  const list = purchases ?? [];
-
-  if (!list.length) {
-    return NextResponse.json({ error: "No purchases found" }, { status: 404 });
-  }
-
-  const alreadyReviewed = list.find((entry) => entry.status !== "pending");
-  if (alreadyReviewed) {
-    return NextResponse.json(
-      { error: "Purchase has already been reviewed" },
-      { status: 400 }
-    );
-  }
-
-  if (action === "approve") {
-    for (const purchase of list) {
-      const { error: rpcError } = await supabase.rpc("add_credits", {
-        p_user_id: purchase.user_id,
-        p_amount: purchase.credits,
-      });
-
-      if (rpcError) {
-        return NextResponse.json({ error: rpcError.message }, { status: 500 });
+  for (const id of ids) {
+    const { data: reviewedRows, error: reviewError } = await supabase.rpc(
+      "review_credit_purchase",
+      {
+        p_purchase_id: id,
+        p_action: action,
+        p_admin_notes: admin_notes?.trim() || null,
       }
+    );
+
+    if (reviewError) {
+      return NextResponse.json({ error: reviewError.message }, { status: 400 });
     }
-  }
 
-  const { data: updated, error: updateError } = await supabase
-    .from("credit_purchases")
-    .update({
-      status: action === "approve" ? "approved" : "rejected",
-      admin_notes: admin_notes ?? null,
-      reviewed_at: new Date().toISOString(),
-    })
-    .in("id", ids)
-    .select();
+    if (!reviewedRows || reviewedRows.length === 0) {
+      return NextResponse.json({ error: "Purchase review failed" }, { status: 500 });
+    }
 
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    reviewedIds.push(reviewedRows[0].purchase_id);
   }
 
   await logAdminEvent(supabase, {
@@ -219,16 +197,16 @@ export async function PATCH(request: Request) {
     category: "payments",
     action: action === "approve" ? "approve_purchase" : "reject_purchase",
     entityType: "credit_purchase",
-    entityId: ids.length === 1 ? ids[0] : null,
+    entityId: ids.length === 1 ? ids[0] : undefined,
     message:
       ids.length === 1
         ? `Purchase ${ids[0]} ${action === "approve" ? "approved" : "rejected"}`
         : `${ids.length} purchases ${action === "approve" ? "approved" : "rejected"} in bulk`,
     metadata: {
-      purchaseIds: ids,
+      purchaseIds: reviewedIds,
       adminNotes: admin_notes ?? null,
     },
   });
 
-  return NextResponse.json({ updated: updated ?? [] });
+  return NextResponse.json({ updatedIds: reviewedIds });
 }

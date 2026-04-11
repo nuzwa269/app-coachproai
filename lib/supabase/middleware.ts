@@ -3,6 +3,18 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 import { isAdmin, type UserRole } from "@/lib/auth/roles";
 
+function isTemporaryAdminByEmail(
+  email: string | null | undefined,
+  emailConfirmedAt: string | null | undefined
+): boolean {
+  const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!configuredAdminEmail) return false;
+  if (!email) return false;
+  if (!emailConfirmedAt) return false;
+
+  return email.trim().toLowerCase() === configuredAdminEmail;
+}
+
 /**
  * Updates the user's Supabase session by refreshing the auth token.
  * Should be called inside the root middleware.ts on every request.
@@ -69,7 +81,13 @@ export async function updateSession(request: NextRequest) {
 
     const role: UserRole = (profile?.role as UserRole | null) ?? "user";
 
-    if (!isAdmin(role)) {
+    const isRoleAdmin = isAdmin(role);
+    const isFallbackAdmin = isTemporaryAdminByEmail(
+      user.email,
+      user.email_confirmed_at
+    );
+
+    if (!isRoleAdmin && !isFallbackAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);

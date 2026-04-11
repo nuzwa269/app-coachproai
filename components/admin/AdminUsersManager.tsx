@@ -11,6 +11,7 @@ type AdminUser = {
   email: string;
   full_name: string | null;
   role: UserRole;
+  account_type: "free" | "subscriber";
   ai_credits_balance: number;
   created_at: string;
   updated_at: string;
@@ -31,9 +32,14 @@ type UsersManagerProps = {
 const ROLES: Array<UserRole | "all"> = [
   "all",
   "user",
-  "subscriber",
   "admin",
   "super_admin",
+];
+
+const ACCOUNT_TYPES: Array<"free" | "subscriber" | "all"> = [
+  "all",
+  "free",
+  "subscriber",
 ];
 
 export function AdminUsersManager({ canAssignPrivilegedRoles }: UsersManagerProps) {
@@ -88,7 +94,7 @@ export function AdminUsersManager({ canAssignPrivilegedRoles }: UsersManagerProp
 
   async function updateUser(
     userId: string,
-    patch: Partial<Pick<AdminUser, "role" | "full_name" | "ai_credits_balance">>
+    patch: Partial<Pick<AdminUser, "role" | "account_type" | "full_name" | "ai_credits_balance">>
   ) {
     setSavingId(userId);
     setError(null);
@@ -173,12 +179,12 @@ export function AdminUsersManager({ canAssignPrivilegedRoles }: UsersManagerProp
           <table className="w-full min-w-[980px] text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">User</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Email</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-500">Role</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Account</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-500">Credits</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-500">Joined</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-500">Updated</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -190,17 +196,7 @@ export function AdminUsersManager({ canAssignPrivilegedRoles }: UsersManagerProp
                   <tr key={user.id} className="align-top">
                     <td className="px-4 py-3">
                       <p className="font-medium text-[#111827]">{user.email}</p>
-                      <Input
-                        className="mt-2 h-8 max-w-xs text-xs"
-                        defaultValue={user.full_name ?? ""}
-                        disabled={blockedByPolicy || savingId === user.id}
-                        onBlur={(event) => {
-                          const value = event.target.value.trim();
-                          if ((user.full_name ?? "") === value) return;
-                          updateUser(user.id, { full_name: value || null });
-                        }}
-                        placeholder="Full name"
-                      />
+                      <p className="text-xs text-gray-500">{user.full_name || "—"}</p>
                     </td>
                     <td className="px-4 py-3">
                       <select
@@ -214,7 +210,6 @@ export function AdminUsersManager({ canAssignPrivilegedRoles }: UsersManagerProp
                         }}
                       >
                         <option value="user">user</option>
-                        <option value="subscriber">subscriber</option>
                         <option value="admin" disabled={!canAssignPrivilegedRoles}>
                           admin
                         </option>
@@ -227,14 +222,29 @@ export function AdminUsersManager({ canAssignPrivilegedRoles }: UsersManagerProp
                       </select>
                       {blockedByPolicy ? (
                         <p className="mt-1 text-xs text-amber-700">
-                          Only super admins can modify this account.
+                          Only super admins can modify.
                         </p>
                       ) : null}
                     </td>
                     <td className="px-4 py-3">
+                      <select
+                        className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                        value={user.account_type}
+                        disabled={blockedByPolicy || savingId === user.id}
+                        onChange={(event) => {
+                          const accountType = event.target.value as "free" | "subscriber";
+                          if (accountType === user.account_type) return;
+                          updateUser(user.id, { account_type: accountType });
+                        }}
+                      >
+                        <option value="free">free</option>
+                        <option value="subscriber">subscriber</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
                       <Input
                         type="number"
-                        className="h-8 w-28 text-xs"
+                        className="h-8 w-24 text-xs"
                         defaultValue={user.ai_credits_balance}
                         disabled={blockedByPolicy || savingId === user.id}
                         min={0}
@@ -250,10 +260,7 @@ export function AdminUsersManager({ canAssignPrivilegedRoles }: UsersManagerProp
                       {new Date(user.created_at).toLocaleDateString("en-PK")}
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-500">
-                      {new Date(user.updated_at).toLocaleDateString("en-PK")}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">
-                      {savingId === user.id ? "Saving..." : "Auto-saves on change"}
+                      {savingId === user.id ? "Saving..." : "—"}
                     </td>
                   </tr>
                 );

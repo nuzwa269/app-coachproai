@@ -3,6 +3,7 @@ export type {
   Database,
   Json,
   UserRole,
+  AccountType,
   Profile,
   ProfileInsert,
   ProfileUpdate,

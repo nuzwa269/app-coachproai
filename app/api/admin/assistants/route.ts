@@ -10,6 +10,16 @@ const VALID_PROVIDERS: AssistantProvider[] = [
   "custom",
 ];
 
+type AssistantStatusFilter = "all" | "active" | "inactive";
+
+function isAssistantProvider(value: string): value is AssistantProvider {
+  return VALID_PROVIDERS.includes(value as AssistantProvider);
+}
+
+function isAssistantStatusFilter(value: string): value is AssistantStatusFilter {
+  return value === "all" || value === "active" || value === "inactive";
+}
+
 function slugify(input: string): string {
   return input
     .trim()
@@ -38,7 +48,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("query")?.trim() ?? "";
   const rawProvider = searchParams.get("provider")?.trim() ?? "all";
-  const status = searchParams.get("status")?.trim() ?? "all";
+  const rawStatus = searchParams.get("status")?.trim() ?? "all";
+  const status = isAssistantStatusFilter(rawStatus) ? rawStatus : "all";
   const page = parsePage(searchParams.get("page"), 1);
   const pageSize = Math.min(parsePage(searchParams.get("pageSize"), 20), 50);
 
@@ -58,11 +69,8 @@ export async function GET(request: Request) {
   }
 
   // ✅ FIXED provider handling (correct scope + correct type)
-  if (
-    rawProvider !== "all" &&
-    VALID_PROVIDERS.includes(rawProvider as AssistantProvider)
-  ) {
-    dataQuery = dataQuery.eq("provider", rawProvider as AssistantProvider);
+  if (rawProvider !== "all" && isAssistantProvider(rawProvider)) {
+    dataQuery = dataQuery.eq("provider", rawProvider);
   }
 
   if (status === "active") {

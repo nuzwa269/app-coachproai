@@ -8,7 +8,8 @@ export type Json =
 
 // ─── User Role ────────────────────────────────────────────────────────────────
 
-export type UserRole = 'user' | 'subscriber' | 'admin' | 'super_admin';
+export type UserRole = 'user' | 'admin' | 'super_admin';
+export type AccountType = 'free' | 'subscriber';
 
 export interface Database {
   public: {
@@ -49,7 +50,20 @@ export interface Database {
           Partial<Pick<CreditPurchase, "id" | "created_at" | "admin_notes" | "reviewed_at" | "status">> & 
           { [key: string]: unknown };
         Update: Partial<Omit<CreditPurchase, "id" | "user_id" | "created_at">> & { [key: string]: unknown };
-        Relationships: GenericRelationship[];
+        Relationships: [
+          {
+            foreignKeyName: "credit_purchases_pack_id_fkey";
+            columns: ["pack_id"];
+            referencedRelation: "credit_packs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "credit_purchases_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       credit_ledger: {
         Row: CreditLedgerEntry & { [key: string]: unknown };
@@ -108,9 +122,28 @@ export interface Database {
         Args: { user_id: string };
         Returns: boolean;
       };
+      is_subscriber: {
+        Args: { user_id: string };
+        Returns: boolean;
+      };
+      review_credit_purchase: {
+        Args: {
+          p_purchase_id: string;
+          p_action: string;
+          p_admin_notes?: string;
+        };
+        Returns: {
+          purchase_id: string;
+          status: string;
+          user_id: string;
+          credits: number;
+          new_balance: number | null;
+        }[];
+      };
     };
     Enums: {
       user_role: UserRole;
+      account_type: AccountType;
     };
   };
 }
@@ -133,12 +166,13 @@ export interface Profile {
   avatar_url: string | null;
   ai_credits_balance: number;
   role: UserRole;
+  account_type: AccountType;
   created_at: string;
   updated_at: string;
 }
 
 export type ProfileInsert = Omit<Profile, "created_at" | "updated_at"> &
-  Partial<Pick<Profile, "created_at" | "updated_at" | "role">>;
+  Partial<Pick<Profile, "created_at" | "updated_at" | "role" | "account_type">>;
 
 export type ProfileUpdate = Partial<
   Omit<Profile, "id" | "created_at" | "updated_at">
