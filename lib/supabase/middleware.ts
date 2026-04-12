@@ -2,17 +2,25 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 import { isAdmin, type UserRole } from "@/lib/auth/roles";
+import {
+  ADMIN_EMAIL,
+  ADMIN_EMAIL_FALLBACK_ENABLED,
+} from "@/lib/config/auth-env";
+import {
+  NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_SUPABASE_URL,
+} from "@/lib/config/public-env";
 
 function isTemporaryAdminByEmail(
   email: string | null | undefined,
   emailConfirmedAt: string | null | undefined
 ): boolean {
-  const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  if (!configuredAdminEmail) return false;
+  if (!ADMIN_EMAIL_FALLBACK_ENABLED) return false;
+  if (!ADMIN_EMAIL) return false;
   if (!email) return false;
   if (!emailConfirmedAt) return false;
 
-  return email.trim().toLowerCase() === configuredAdminEmail;
+  return email.trim().toLowerCase() === ADMIN_EMAIL;
 }
 
 /**
@@ -25,8 +33,8 @@ export async function updateSession(request: NextRequest) {
   });
 
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {

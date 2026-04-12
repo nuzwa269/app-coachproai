@@ -12,15 +12,7 @@ import { OutOfCreditsModal } from "@/components/credits/OutOfCreditsModal";
 import { LowCreditsWarning } from "@/components/credits/LowCreditsWarning";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-
-const ASSISTANT_TYPES = [
-  "Programming Tutor",
-  "Database Expert",
-  "API Architect",
-  "Documentation Writer",
-  "DevOps Guide",
-  "Code Reviewer",
-];
+import type { AssistantOption } from "@/lib/assistants/types";
 
 /** Extract plain text from a UIMessage's parts */
 function getMessageText(message: UIMessage): string {
@@ -32,20 +24,45 @@ function getMessageText(message: UIMessage): string {
 
 interface ChatPanelProps {
   projectId: string;
-  initialAssistantType?: string;
+  assistants: AssistantOption[];
+  initialAssistantSlug?: string;
 }
 
-export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
+export function ChatPanel({
+  projectId,
+  assistants,
+  initialAssistantSlug,
+}: ChatPanelProps) {
   const router = useRouter();
-  const [assistantType, setAssistantType] = useState(
-    initialAssistantType ?? "Programming Tutor"
+  const fallbackAssistant = useMemo(
+    () =>
+      assistants[0] ?? {
+        slug: "default-assistant",
+        name: "Assistant",
+        description: null,
+      },
+    [assistants]
   );
+
+  const initialSlug =
+    initialAssistantSlug &&
+    assistants.some((assistant) => assistant.slug === initialAssistantSlug)
+      ? initialAssistantSlug
+      : fallbackAssistant.slug;
+
+  const [assistantSlug, setAssistantSlug] = useState(initialSlug);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [showNoCreditsModal, setShowNoCreditsModal] = useState(false);
+  const hasAssistants = assistants.length > 0;
 
   const supabaseClient = useMemo(() => createClient(), []);
+
+  const selectedAssistant = useMemo(
+    () => assistants.find((assistant) => assistant.slug === assistantSlug) ?? fallbackAssistant,
+    [assistants, assistantSlug, fallbackAssistant]
+  );
 
   // Fetch credit balance on mount
   useEffect(() => {
@@ -77,7 +94,7 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
   // Reset messages when assistant type changes
   useEffect(() => {
     setMessages([]);
-  }, [assistantType, setMessages]);
+  }, [assistantSlug, setMessages]);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -116,6 +133,7 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
   async function handleSend() {
     const text = inputValue.trim();
     if (!text || isLoading) return;
+    if (!hasAssistants) return;
 
     // Client-side guard: show modal if balance is 0
     if (credits !== null && credits <= 0) {
@@ -126,7 +144,7 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
     setInputValue("");
     await sendMessage(
       { text },
-      { body: { projectId, assistantType } }
+      { body: { projectId, assistantSlug } }
     );
   }
 
@@ -150,13 +168,14 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
         <Bot className="h-4 w-4 text-brand-orange shrink-0" />
         <div className="relative flex-1">
           <select
-            value={assistantType}
-            onChange={(e) => setAssistantType(e.target.value)}
+            value={assistantSlug}
+            onChange={(e) => setAssistantSlug(e.target.value)}
             className="w-full appearance-none bg-transparent text-sm font-medium text-[#111827] pr-6 focus:outline-none cursor-pointer"
+            disabled={!hasAssistants}
           >
-            {ASSISTANT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {type}
+            {assistants.map((assistant) => (
+              <option key={assistant.slug} value={assistant.slug}>
+                {assistant.name}
               </option>
             ))}
           </select>
@@ -179,10 +198,14 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
               <Bot className="h-6 w-6 text-brand-orange" />
             </div>
             <p className="text-sm font-medium text-[#111827]">
-              Start a conversation with {assistantType}
+              {hasAssistants
+                ? `Start a conversation with ${selectedAssistant.name}`
+                : "No active assistants configured"}
             </p>
             <p className="mt-1 text-xs text-gray-400 max-w-xs">
-              Ask questions about your project and get structured, context-aware advice.
+              {hasAssistants
+                ? "Ask questions about your project and get structured, context-aware advice."
+                : "Ask an admin to activate at least one assistant in the admin panel."}
             </p>
           </div>
         )}
@@ -232,7 +255,7 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
                   <SaveToWorkspaceButton
                     projectId={projectId}
                     content={text}
-                    assistantType={assistantType}
+                    assistantType={selectedAssistant.name}
                     onSaved={() => router.refresh()}
                   />
                 )}
@@ -264,16 +287,16 @@ export function ChatPanel({ projectId, initialAssistantType }: ChatPanelProps) {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Ask ${assistantType} a question...`}
+            placeholder={`Ask ${selectedAssistant.name} a question...`}
             className="min-h-[40px] max-h-32 resize-none text-sm flex-1 rounded-xl border-gray-200 focus-visible:ring-1 focus-visible:ring-brand-orange focus-visible:ring-offset-0"
-            disabled={isLoading}
+            disabled={isLoading || !hasAssistants}
             rows={1}
           />
           <Button
             type="button"
             size="icon"
             onClick={handleSend}
-            disabled={isLoading || !inputValue.trim()}
+            disabled={isLoading || !inputValue.trim() || !hasAssistants}
             className="h-10 w-10 shrink-0 rounded-xl bg-brand-orange hover:bg-brand-orange/90 text-white"
           >
             {isLoading ? (

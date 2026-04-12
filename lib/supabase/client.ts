@@ -1,6 +1,10 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_SUPABASE_URL,
+} from "@/lib/config/public-env";
 
 /**
  * Creates a Supabase client for use in browser (Client Components).
@@ -11,7 +15,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  */
 export function createClient(): SupabaseClient<Database, "public", "public"> {
   return createBrowserClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) as unknown as SupabaseClient<Database, "public", "public">;
 }

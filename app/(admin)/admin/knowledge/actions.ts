@@ -3,6 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/server-roles";
 import { logAdminEvent } from "@/lib/admin/audit";
+import type { KnowledgeStatus } from "@/lib/supabase/types";
+
+const KNOWLEDGE_STATUSES: readonly KnowledgeStatus[] = [
+  "queued",
+  "indexing",
+  "healthy",
+  "failed",
+];
+
+function parseKnowledgeStatus(value: string): KnowledgeStatus | null {
+  return KNOWLEDGE_STATUSES.includes(value as KnowledgeStatus)
+    ? (value as KnowledgeStatus)
+    : null;
+}
 
 export async function addKnowledgeSourceAction(formData: FormData) {
   const { supabase, user } = await requireAdmin();
@@ -48,13 +62,11 @@ export async function updateKnowledgeStatusAction(formData: FormData) {
   const { supabase, user } = await requireAdmin();
 
   const sourceId = String(formData.get("sourceId") ?? "").trim();
-  const rawStatus = String(formData.get("status") ?? "").trim();
+  const status = parseKnowledgeStatus(String(formData.get("status") ?? "").trim());
 
-  if (!sourceId || !["queued", "indexing", "healthy", "failed"].includes(rawStatus)) {
+  if (!sourceId || !status) {
     return;
   }
-
-  const status = rawStatus as "queued" | "indexing" | "healthy" | "failed";
 
   const { data: source, error: fetchError } = await supabase
     .from("admin_knowledge_sources")

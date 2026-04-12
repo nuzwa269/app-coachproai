@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AssistantsGrid } from "@/components/dashboard/assistants-grid";
 import { CreateProjectDialog } from "@/components/dashboard/create-project-dialog";
+import type { AssistantOption } from "@/lib/assistants/types";
 
 export const metadata = {
   title: "Dashboard — CoachPro AI",
@@ -42,6 +43,14 @@ export default async function DashboardPage() {
     profile?.full_name ?? user?.email?.split("@")[0] ?? "there";
 
   const projectList = (projects ?? []) as Project[];
+
+  const { data: assistantsData } = await supabase
+    .from("assistants")
+    .select("slug, name, description, provider")
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+
+  const assistants = (assistantsData ?? []) as AssistantOption[];
 
   function formatRelativeTime(dateStr: string) {
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -176,7 +185,7 @@ export default async function DashboardPage() {
       </section>
 
       {/* Assistants Grid */}
-      <AssistantsGrid />
+      <AssistantsGrid assistants={assistants} />
     </div>
   );
 }

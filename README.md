@@ -1,149 +1,114 @@
 # CoachPro AI
 
-An AI-powered development coach built with Next.js, Supabase, and the Vercel AI SDK.
+AI-powered development coach built with Next.js App Router, Supabase, and the Vercel AI SDK.
 
-## Tech Stack
+## Stack
 
-- **Framework:** Next.js 16+ (App Router, TypeScript)
-- **Styling:** Tailwind CSS v4 + Shadcn UI (brand colors from `DESIGN_SYSTEM.md`)
-- **Database & Auth:** Supabase (PostgreSQL + Row Level Security)
-- **AI Engine:** Vercel AI SDK + OpenAI API / Anthropic Claude *(Week 3)*
-- **Payments:** Credit Pack system (JazzCash, Easypaisa, Bank Transfer, WhatsApp)
-- **Hosting:** Vercel
+- Next.js 16.2.2 + React 19 + TypeScript
+- Tailwind CSS v4 + Radix UI components
+- Supabase (PostgreSQL, Auth, RLS)
+- Vercel AI SDK + OpenAI provider
 
----
+## Quick Start
 
-## Getting Started
-
-### 1. Clone & Install
+1. Install dependencies
 
 ```bash
-git clone <repo-url>
-cd app-coachproai
 npm install
 ```
 
-### 2. Setup Environment Variables
-
-Copy the example file and fill in your Supabase credentials:
+2. Configure environment variables
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-Edit `.env.local`:
+Required variables:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+OPENAI_API_KEY=<your-openai-api-key>
+ADMIN_EMAIL=<optional-admin-email@example.com>
+ADMIN_EMAIL_FALLBACK_ENABLED=false
 ```
 
-You can find these in your Supabase project dashboard under **Settings → API**.
+Notes:
+- Keep `ADMIN_EMAIL_FALLBACK_ENABLED=false` in production unless you explicitly need temporary email-based admin fallback.
+- The app now validates required environment variables at startup.
 
-### 3. Setup Supabase Database
+3. Apply Supabase migrations in order
 
-1. Create a new project at [supabase.com](https://supabase.com).
-2. Open the **SQL Editor** in your Supabase dashboard.
-3. Copy the contents of `supabase/migrations/001_initial_schema.sql` and run it.
-4. Then run `supabase/migrations/002_credit_packs.sql` to add the credit pack tables and RPC functions.
+Run each file from `supabase/migrations` sequentially:
 
-This creates all tables (`profiles`, `projects`, `saved_outputs`, `chat_messages`, `credit_packs`, `credit_purchases`, `credit_ledger`), indexes, RLS policies, and triggers.
+1. `001_initial_schema.sql`
+2. `002_credit_packs.sql`
+3. `003_user_roles.sql`
+4. `004_admin_assistants.sql`
+5. `005_admin_control_plane.sql`
+6. `006_account_types.sql`
+7. `007_enforce_credit_purchase_relationships.sql`
+8. `008_phase1_access_roles_account_types.sql`
+9. `009_review_credit_purchase_rpc.sql`
+10. `010_subscriber_on_approved_purchase.sql`
 
-### 4. Configure Google OAuth (optional)
-
-1. In Supabase go to **Authentication → Providers → Google**.
-2. Enable it and add your Google OAuth credentials.
-3. Add `https://<your-domain>/auth/callback` to the list of allowed redirect URLs.
-
-### 5. Run the Development Server
+4. Run locally
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000.
 
----
+## Scripts
 
-## Project Structure
+- `npm run dev` Start development server
+- `npm run build` Build for production
+- `npm run start` Run production server
+- `npm run lint` Run ESLint
+- `npm run test` Run unit tests (Vitest)
+- `npm run test:watch` Run tests in watch mode
 
-```
-app/
-├── (auth)/          # Login & Signup pages (centered card layout)
-│   ├── login/
-│   ├── signup/
-│   └── layout.tsx
-├── (dashboard)/     # Protected routes (require auth)
-│   ├── dashboard/
-│   ├── projects/    # Project workspace with AI chat
-│   ├── buy-credits/ # Buy Credits page + purchase history
-│   ├── saved-outputs/ # Global saved outputs across all projects
-│   ├── admin/
-│   │   └── payments/ # Admin credit purchase approval panel
-│   └── layout.tsx
-├── api/
-│   ├── chat/        # AI chat endpoint (credit-enforced)
-│   ├── credit-packs/ # List active credit packs
-│   ├── credit-purchases/ # Submit & list purchase requests
-│   └── admin/
-│       └── credit-purchases/ # Admin approve/reject purchases
-├── auth/
-│   ├── callback/    # OAuth callback handler
-│   └── confirm/     # Email confirmation handler
-├── globals.css      # Brand CSS variables + Tailwind v4 theme
-├── layout.tsx       # Root layout (Inter + Poppins fonts, metadata)
-└── page.tsx         # Landing page (redirects to /dashboard if logged in)
+## Architecture Overview
 
-components/
-├── auth/            # LoginForm, SignupForm, OAuthButton, LogoutButton
-├── chat/            # ChatPanel, SaveToWorkspaceButton
-├── credits/         # CreditBalance, OutOfCreditsModal, LowCreditsWarning,
-│                    # CreditPackCard, PurchaseForm
-├── dashboard/       # DashboardShell, Sidebar, TopNav, project dialogs
-└── ui/              # Button, Input, Label, Card, Dialog (Shadcn-style)
+- App routes and pages: `app/`
+- API routes: `app/api/`
+- Auth callbacks: `app/auth/callback`, `app/auth/confirm`
+- Route protection entry: `proxy.ts`
+- Supabase middleware/session refresh: `lib/supabase/middleware.ts`
+- Server role guards: `lib/auth/server-roles.ts`
+- Shared typed schema: `types/database.ts`
+- SQL schema and policies: `supabase/migrations/*.sql`
 
-lib/
-├── supabase/
-│   ├── client.ts    # Browser Supabase client
-│   ├── server.ts    # Server-side Supabase client
-│   ├── middleware.ts # Session refresh helper
-│   └── types.ts     # Re-exports for database types
-└── utils.ts         # cn() helper for Tailwind class merging
+## Main Route Groups
 
-types/
-└── database.ts      # Full TypeScript types mirroring the DB schema
+- `(auth)` login and signup flows
+- `(dashboard)` user workspace routes
+- `(admin)` admin control plane routes
 
-supabase/
-└── migrations/
-    └── 001_initial_schema.sql  # Complete DB schema (run in Supabase SQL Editor)
+## API Surface
 
-middleware.ts        # Root Next.js middleware (refreshes Supabase session)
-```
+- User APIs
+  - `POST /api/chat`
+  - `GET,POST /api/projects`
+  - `GET,PATCH,DELETE /api/projects/[id]`
+  - `GET,POST /api/saved-outputs`
+  - `GET /api/credit-packs`
+  - `GET,POST /api/credit-purchases`
+- Admin APIs
+  - `GET,PATCH /api/admin/credit-purchases`
+  - `GET,PATCH /api/admin/users`
+  - `GET,POST,PATCH /api/admin/assistants`
 
----
+## Notes
 
-## Credit System
+- Assistant selection in project chat is sourced from active records in the `assistants` table.
+- Credits are enforced server-side via `deduct_credit` RPC before AI generation.
+- Payment review is handled atomically via `review_credit_purchase` RPC.
 
-CoachProAI uses a **credit pack** monetization model instead of a recurring subscription:
+## Additional Docs
 
-- New users start with **50 free credits**
-- Each AI message costs **1 credit**
-- Users purchase credit packs using Pakistan-friendly payment methods: **JazzCash, Easypaisa, Bank Transfer, or WhatsApp**
-- Purchases are manually reviewed and approved by the admin
-- Credits are added to the user's balance upon approval
-
-| Pack | Credits | Price |
-|---|---|---|
-| Starter Pack | 100 | Rs.500 |
-| Popular Pack | 200 | Rs.900 |
-| Mega Pack | 500 | Rs.2000 |
-
----
-
-## Development Plan
-
-See `DEVELOPMENT_PLAN.md` for the full 4-week roadmap.
-
-## Design System
-
-See `DESIGN_SYSTEM.md` for brand colors, typography, and Tailwind configuration.
+- `DESIGN_SYSTEM.md`
+- `DEVELOPMENT_PLAN.md`
+- `docs/REMEDIATION_PLAN.md`
+- `docs/ARCHITECTURE_AND_ENDPOINTS.md`

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isValidHttpUrl } from "@/lib/validation/url";
 
 export async function GET() {
   const supabase = await createClient();
@@ -49,6 +50,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const normalizedScreenshotUrl = screenshot_url?.trim();
+  if (normalizedScreenshotUrl && !isValidHttpUrl(normalizedScreenshotUrl)) {
+    return NextResponse.json(
+      { error: "screenshot_url must be a valid http(s) URL" },
+      { status: 400 }
+    );
+  }
+
   const validMethods = ["jazzcash", "easypaisa", "bank_transfer", "whatsapp"];
   if (!validMethods.includes(method)) {
     return NextResponse.json({ error: "Invalid payment method" }, { status: 400 });
@@ -78,7 +87,7 @@ export async function POST(request: Request) {
       amount_pkr: pack.price_pkr,
       method: method as "jazzcash" | "easypaisa" | "bank_transfer" | "whatsapp",
       transaction_ref,
-      screenshot_url: screenshot_url ?? null,
+      screenshot_url: normalizedScreenshotUrl || null,
       status: "pending" as const,
     })
     .select()

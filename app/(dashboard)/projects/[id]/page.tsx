@@ -8,6 +8,7 @@ import { WorkspaceTabs } from "@/components/workspace/workspace-tabs";
 import { EditProjectDialog } from "@/components/dashboard/edit-project-dialog";
 import { DeleteProjectDialog } from "@/components/dashboard/delete-project-dialog";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import type { AssistantOption } from "@/lib/assistants/types";
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>;
@@ -62,6 +63,18 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
     .order("created_at", { ascending: false });
 
   const savedOutputs = (outputsData ?? []) as SavedOutput[];
+
+  const { data: assistantsData } = await supabase
+    .from("assistants")
+    .select("slug, name, description, provider")
+    .eq("is_active", true)
+    .order("name", { ascending: true });
+
+  const assistants = (assistantsData ?? []) as AssistantOption[];
+
+  const initialAssistantSlug = assistants.some((entry) => entry.slug === assistant)
+    ? assistant
+    : assistants[0]?.slug;
 
   const statusColors: Record<Project["status"], string> = {
     active: "bg-green-100 text-green-700",
@@ -139,7 +152,8 @@ export default async function ProjectPage({ params, searchParams }: ProjectPageP
           <div className="flex-1 min-h-0">
             <ChatPanel
               projectId={project.id}
-              initialAssistantType={assistant}
+              assistants={assistants}
+              initialAssistantSlug={initialAssistantSlug}
             />
           </div>
         </div>

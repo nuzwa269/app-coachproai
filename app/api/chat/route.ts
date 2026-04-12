@@ -2,23 +2,11 @@ import { openai } from "@ai-sdk/openai";
 import { streamText, convertToModelMessages } from "ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { OPENAI_API_KEY } from "@/lib/config/server-env";
 import type { UIMessage } from "ai";
 import type { Project } from "@/types/database";
 
-const ASSISTANT_PERSONAS: Record<string, string> = {
-  "Programming Tutor":
-    "You are a Programming Tutor. Help the user understand code structure, patterns, best practices, and how to write clean, maintainable code. Give clear explanations with code examples.",
-  "Database Expert":
-    "You are a Database Expert. Help the user design efficient database schemas, write optimized queries, and follow database best practices. Provide structured schema definitions and SQL examples.",
-  "API Architect":
-    "You are an API Architect. Help the user design RESTful APIs, plan endpoints, handle authentication flows, and follow REST best practices. Give concrete endpoint examples.",
-  "Documentation Writer":
-    "You are a Documentation Writer. Help the user create clear README files, API documentation, technical guides, and code comments. Write in a professional, concise style.",
-  "DevOps Guide":
-    "You are a DevOps Guide. Help the user with CI/CD pipelines, Docker configurations, deployment strategies, and infrastructure best practices. Give actionable configuration examples.",
-  "Code Reviewer":
-    "You are a Code Reviewer. Analyze code for bugs, performance issues, security vulnerabilities, and style improvements. Give specific, constructive feedback with corrected examples.",
-};
+void OPENAI_API_KEY;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -31,10 +19,10 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { messages, projectId, assistantType } = body as {
+  const { messages, projectId, assistantSlug } = body as {
     messages: UIMessage[];
     projectId: string;
-    assistantType: string;
+    assistantSlug: string;
   };
 
   if (!messages || !Array.isArray(messages)) {
@@ -43,6 +31,10 @@ export async function POST(request: Request) {
 
   if (!projectId || typeof projectId !== "string") {
     return NextResponse.json({ error: "projectId is required" }, { status: 400 });
+  }
+
+  if (!assistantSlug || typeof assistantSlug !== "string") {
+    return NextResponse.json({ error: "assistantSlug is required" }, { status: 400 });
   }
 
   // Atomically deduct 1 credit before calling OpenAI.
@@ -77,9 +69,18 @@ export async function POST(request: Request) {
 
   const project = projectData as Project;
 
-  const persona =
-    ASSISTANT_PERSONAS[assistantType] ??
-    "You are a helpful AI assistant for software development.";
+  const { data: assistantData, error: assistantError } = await supabase
+    .from("assistants")
+    .select("slug, name, persona, is_active")
+    .eq("slug", assistantSlug)
+    .eq("is_active", true)
+    .single();
+
+  if (assistantError || !assistantData) {
+    return NextResponse.json({ error: "Assistant not found" }, { status: 400 });
+  }
+
+  const persona = assistantData.persona;
 
   const techStackStr =
     project.tech_stack && project.tech_stack.length > 0
@@ -119,7 +120,7 @@ Always tailor your advice to this specific project context. Give structured, act
           user_id: user.id,
           role: "user" as const,
           content: userContent,
-          assistant_type: assistantType ?? null,
+          assistant_type: assistantData.slug,
         });
       }
 
@@ -129,7 +130,7 @@ Always tailor your advice to this specific project context. Give structured, act
           user_id: user.id,
           role: "assistant" as const,
           content: text,
-          assistant_type: assistantType ?? null,
+          assistant_type: assistantData.slug,
         });
       }
 

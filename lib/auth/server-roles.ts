@@ -7,6 +7,10 @@ import {
   type AccountType,
   type UserRole,
 } from "@/lib/auth/roles";
+import {
+  ADMIN_EMAIL,
+  ADMIN_EMAIL_FALLBACK_ENABLED,
+} from "@/lib/config/auth-env";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
@@ -20,12 +24,12 @@ function isTemporaryAdminByEmail(
   email: string | null | undefined,
   emailConfirmedAt: string | null | undefined
 ): boolean {
-  const configuredAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  if (!configuredAdminEmail) return false;
+  if (!ADMIN_EMAIL_FALLBACK_ENABLED) return false;
+  if (!ADMIN_EMAIL) return false;
   if (!email) return false;
   if (!emailConfirmedAt) return false;
 
-  return email.trim().toLowerCase() === configuredAdminEmail;
+  return email.trim().toLowerCase() === ADMIN_EMAIL;
 }
 
 /**
