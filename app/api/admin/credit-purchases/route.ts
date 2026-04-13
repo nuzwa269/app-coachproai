@@ -177,7 +177,7 @@ export async function PATCH(request: Request) {
       {
         p_purchase_id: id,
         p_action: action,
-        p_admin_notes: admin_notes?.trim() || null,
+        p_admin_notes: admin_notes?.trim() || undefined,
       }
     );
 
