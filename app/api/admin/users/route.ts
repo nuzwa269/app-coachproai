@@ -42,19 +42,19 @@ export async function GET(request: Request) {
     .range(rangeStart, rangeEnd);
 
   if (roleFilter !== "all") {
-  if (!ALLOWED_ROLES.includes(roleFilter as UserRole)) {
-    return NextResponse.json({ error: "Invalid role filter" }, { status: 400 });
-  }
+    if (!ALLOWED_ROLES.includes(roleFilter as UserRole)) {
+      return NextResponse.json({ error: "Invalid role filter" }, { status: 400 });
+    }
 
-  if (roleFilter === "subscriber") {
-    dataQuery = dataQuery.eq("account_type", "subscriber");
-  } else {
-    dataQuery = dataQuery.eq("role", roleFilter as Exclude<UserRole, "subscriber">);
+    if (roleFilter === "subscriber") {
+      dataQuery = dataQuery.eq("account_type", "subscriber");
+    } else {
+      dataQuery = dataQuery.eq(
+        "role",
+        roleFilter as Exclude<UserRole, "subscriber">
+      );
+    }
   }
-}
-
-  dataQuery = dataQuery.eq("role", roleFilter as UserRole);
-}
 
   if (query) {
     dataQuery = dataQuery.or(`email.ilike.%${query}%,full_name.ilike.%${query}%`);
@@ -95,7 +95,13 @@ export async function PATCH(request: Request) {
   }
 
   const body = (await request.json()) as UpdateUserPayload;
-  const { userId, role: nextRole, account_type: nextAccountType, full_name, ai_credits_balance } = body;
+  const {
+    userId,
+    role: nextRole,
+    account_type: nextAccountType,
+    full_name,
+    ai_credits_balance,
+  } = body;
 
   if (!userId) {
     return NextResponse.json({ error: "userId is required" }, { status: 400 });
@@ -144,7 +150,6 @@ export async function PATCH(request: Request) {
 
   if (typeof nextRole === "string") {
     if (nextRole === "subscriber") {
-      // Legacy compatibility: store subscriber as account_type, keep role as user.
       updates.role = "user";
       updates.account_type = "subscriber";
     } else {
@@ -192,7 +197,9 @@ export async function PATCH(request: Request) {
     .from("profiles")
     .update(updates)
     .eq("id", userId)
-    .select("id, email, full_name, role, account_type, ai_credits_balance, created_at, updated_at")
+    .select(
+      "id, email, full_name, role, account_type, ai_credits_balance, created_at, updated_at"
+    )
     .single();
 
   if (updateError) {
