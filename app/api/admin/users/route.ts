@@ -46,6 +46,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid role filter" }, { status: 400 });
   }
 
+  if (roleFilter === "subscriber") {
+    dataQuery = dataQuery.eq("account_type", "subscriber");
+  } else {
+    dataQuery = dataQuery.eq("role", roleFilter as Exclude<UserRole, "subscriber">);
+  }
+}
+
   dataQuery = dataQuery.eq("role", roleFilter as UserRole);
 }
 
