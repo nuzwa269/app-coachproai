@@ -12,7 +12,7 @@ const KNOWLEDGE_STATUSES: readonly KnowledgeStatus[] = [
   "failed",
 ];
 
-function parseKnowledgeStatus(value: status): KnowledgeStatus | null {
+function parseKnowledgeStatus(value: string): KnowledgeStatus | null {
   return KNOWLEDGE_STATUSES.includes(value as KnowledgeStatus)
     ? (value as KnowledgeStatus)
     : null;
