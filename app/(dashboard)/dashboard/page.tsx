@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Sparkles, FolderOpen } from "lucide-react";
 import type { Profile, Project } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { AssistantsGrid } from "@/components/dashboard/assistants-grid";
 import { CreateProjectDialog } from "@/components/dashboard/create-project-dialog";
 import type { AssistantOption } from "@/lib/assistants/types";
@@ -19,18 +19,23 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // ✅ Guard against null user instead of crashing
+  if (!user) {
+    redirect("/login");
+  }
+
   // Fetch the user's profile to get their name
   const { data: profileData } = await supabase
     .from("profiles")
     .select("full_name, ai_credits_balance")
-    .eq("id", user!.id)
+    .eq("id", user.id)
     .single();
 
   // Fetch recent projects
   const { data: projects } = await supabase
     .from("projects")
     .select("*")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .order("updated_at", { ascending: false })
     .limit(6);
 
@@ -40,7 +45,7 @@ export default async function DashboardPage() {
   > | null;
 
   const displayName =
-    profile?.full_name ?? user?.email?.split("@")[0] ?? "there";
+    profile?.full_name ?? user.email?.split("@")[0] ?? "there";
 
   const projectList = (projects ?? []) as Project[];
 
@@ -71,7 +76,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      {/* Welcome banner */}
       <div className="rounded-2xl bg-gradient-to-r from-[#FF8A00] to-[#9333EA] p-8 text-white">
         <div className="flex items-center gap-3">
           <Sparkles className="h-8 w-8 text-orange-200 shrink-0" />
@@ -85,7 +89,6 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -107,7 +110,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Projects */}
       <section>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-[#111827] font-heading">
@@ -184,7 +186,6 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* Assistants Grid */}
       <AssistantsGrid assistants={assistants} />
     </div>
   );
